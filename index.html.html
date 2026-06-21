@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predictor Mundial by Samuel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          deep:        '#070F1C',
+          panel:       '#0D1B2E',
+          panelLight:  '#13243B',
+          line:        '#1E3350',
+          pitch:       '#18C77A',
+          pitchDim:    '#0E7A4B',
+          gold:        '#D9AE51',
+          azul:        '#3576F2',
+          azulDim:     '#1E4A9E',
+          ink:         '#EAF1F8',
+          muted:       '#7E91AB',
+        },
+        fontFamily: {
+          display: ['Rajdhani', 'sans-serif'],
+          body: ['Inter', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: #070F1C;
+    background-image:
+      linear-gradient(rgba(234,241,248,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(234,241,248,0.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  .vignette {
+    background: radial-gradient(ellipse 90% 60% at 50% 0%, rgba(7,15,28,0) 0%, #070F1C 78%);
+  }
+  .glass {
+    background: linear-gradient(180deg, rgba(19,36,59,0.65) 0%, rgba(13,27,46,0.85) 100%);
+    backdrop-filter: blur(6px);
+  }
+  select, input[type="number"], input[type="text"] { font-family: 'Inter', sans-serif; }
+  select.field, input.field {
+    width: 100%; background: #13243B; border: 1px solid #1E3350; border-radius: 0.6rem;
+    padding: 0.55rem 0.75rem; outline: none; color: #EAF1F8; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+  }
+  select.field { font-family: 'Inter', sans-serif; cursor: pointer; }
+  select.field:focus, input.field:focus { border-color: var(--focus, #18C77A); }
+  input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 999px; background: #1E3350; outline: none; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 999px;
+    background: var(--thumb, #18C77A); border: 2px solid #070F1C; cursor: pointer; box-shadow: 0 0 0 3px rgba(24,199,122,0.18);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 999px; background: var(--thumb, #18C77A); border: 2px solid #070F1C; cursor: pointer;
+  }
+  .accent-azul::-webkit-slider-thumb { background: #3576F2; box-shadow: 0 0 0 3px rgba(53,118,242,0.18); }
+  .accent-azul::-moz-range-thumb { background: #3576F2; }
+  input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { opacity: 0.4; }
+
+  .vs-ring {
+    box-shadow: 0 0 0 0 rgba(217,174,81,0.45);
+    animation: pulseRing 2.6s ease-out infinite;
+  }
+  @keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0 rgba(217,174,81,0.45); }
+    70%  { box-shadow: 0 0 0 18px rgba(217,174,81,0); }
+    100% { box-shadow: 0 0 0 0 rgba(217,174,81,0); }
+  }
+  .scoreboard-glow { text-shadow: 0 0 24px rgba(24,199,122,0.35), 0 0 48px rgba(53,118,242,0.18); }
+  .bar-fill { transition: width 1.1s cubic-bezier(0.16,1,0.3,1); }
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.show { opacity: 1; transform: translateY(0); }
+  .goal-row { animation: slideIn 0.45s ease both; }
+  @keyframes slideIn { from { opacity:0; transform: translateX(-8px);} to {opacity:1; transform: translateX(0);} }
+  ::selection { background: rgba(24,199,122,0.3); }
+</style>
+</head>
+<body class="font-body text-ink min-h-screen relative">
+<div class="vignette fixed inset-0 pointer-events-none z-0"></div>
+
+<div class="relative z-10">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="max-w-7xl mx-auto px-5 md:px-8 pt-10 pb-6 text-center">
+    <div class="flex items-center justify-center gap-2 text-[11px] tracking-[0.25em] text-muted uppercase mb-3">
+      <span class="h-px w-8 bg-line"></span>
+      <span>Copa Mundial FIFA 2026 · 48 Selecciones · Analítica de Partidos</span>
+      <span class="h-px w-8 bg-line"></span>
+    </div>
+    <h1 class="font-display font-700 text-5xl md:text-6xl tracking-wide leading-none">
+      <span class="bg-gradient-to-r from-pitch via-ink to-azul bg-clip-text text-transparent">PREDICTOR&nbsp;MUNDIAL</span>
+    </h1>
+    <div class="font-display text-gold text-sm md:text-base tracking-[0.4em] uppercase mt-2">by Samuel</div>
+    <p class="text-muted text-sm md:text-base mt-3 max-w-xl mx-auto">
+      Elegí cualquiera de las 48 selecciones clasificadas al Mundial 2026 y simulá el cruce con un modelo de xG, calidad de plantilla, momentos de partido y distribución de Poisson.
+    </p>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-5 md:px-8 pb-24">
+
+    <!-- ===================== COMPARADOR ===================== -->
+    <section class="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-5 lg:gap-4 items-start">
+
+      <!-- EQUIPO A -->
+      <div class="glass border border-line rounded-2xl p-5 md:p-6 relative overflow-hidden">
+        <div class="absolute left-0 top-0 h-full w-1 bg-pitch"></div>
+
+        <label class="text-[10px] uppercase tracking-widest text-muted block mb-1.5">Equipo A · Selección</label>
+        <select id="teamA-select" style="--focus:#18C77A" class="field mb-4"></select>
+
+        <div class="flex items-center gap-3 mb-5">
+          <span id="teamA-flag" class="text-2xl leading-none">🇦🇷</span>
+          <input id="teamA-name" value="Argentina" class="font-display font-700 text-2xl bg-transparent outline-none w-full tracking-wide focus:text-pitch transition-colors" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="text-xs text-muted block mb-1">xG promedio (a favor)</label>
+            <input id="teamA-xg" type="number" step="0.01" min="0.1" max="4.5" value="1.85"
+              class="field text-pitch" />
+          </div>
+          <div>
+            <label class="text-xs text-muted block mb-1">xGA promedio (en contra)</label>
+            <input id="teamA-xga" type="number" step="0.01" min="0.1" max="4.5" value="0.78"
+              class="field text-pitch" />
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Calidad General del Equipo</span><span id="teamA-quality-val" class="font-mono text-pitch">92</span></div>
+            <input style="--thumb:#18C77A" id="teamA-quality" type="range" min="1" max="100" value="92" class="w-full" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Generadores de Momentos (ofensivo)</span><span id="teamA-momentumGen-val" class="font-mono text-pitch">8</span></div>
+            <input style="--thumb:#18C77A" id="teamA-momentumGen" type="range" min="1" max="10" value="8" class="w-full" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Bloqueadores de Momentos (defensivo)</span><span id="teamA-momentumBlock-val" class="font-mono text-pitch">7</span></div>
+            <input style="--thumb:#18C77A" id="teamA-momentumBlock" type="range" min="1" max="10" value="7" class="w-full" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Calidad del Arquero</span><span id="teamA-gk-val" class="font-mono text-pitch">88</span></div>
+            <input style="--thumb:#18C77A" id="teamA-gk" type="range" min="1" max="100" value="88" class="w-full" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Efectividad de Goleadores</span><span id="teamA-scorer-val" class="font-mono text-pitch">85</span></div>
+            <input style="--thumb:#18C77A" id="teamA-scorer" type="range" min="1" max="100" value="85" class="w-full" />
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTRO: VS + BOTÓN -->
+      <div class="flex lg:flex-col items-center justify-center gap-4 lg:gap-6 lg:py-10 lg:px-2 order-first lg:order-none">
+        <div class="vs-ring shrink-0 h-16 w-16 md:h-20 md:w-20 rounded-full border border-gold/50 bg-panel flex items-center justify-center">
+          <span class="font-display font-700 text-xl md:text-2xl text-gold">VS</span>
+        </div>
+        <button id="swap-btn" title="Intercambiar equipos" class="hidden lg:flex items-center gap-1.5 text-[11px] text-muted hover:text-ink transition-colors border border-line rounded-full px-3 py-1.5">
+          <span>⇄</span> Intercambiar
+        </button>
+        <button id="simulate-btn"
+          class="font-display font-700 tracking-wide text-base md:text-lg px-7 py-3.5 rounded-xl bg-gradient-to-r from-pitch to-azul text-deep shadow-[0_0_30px_rgba(24,199,122,0.25)] hover:shadow-[0_0_45px_rgba(53,118,242,0.35)] hover:scale-[1.03] active:scale-[0.98] transition-all whitespace-nowrap">
+          ⚡ SIMULAR PARTIDO
+        </button>
+      </div>
+
+      <!-- EQUIPO B -->
+      <div class="glass border border-line rounded-2xl p-5 md:p-6 relative overflow-hidden">
+        <div class="absolute left-0 top-0 h-full w-1 bg-azul"></div>
+
+        <label class="text-[10px] uppercase tracking-widest text-muted block mb-1.5 text-right">Equipo B · Selección</label>
+        <select id="teamB-select" style="--focus:#3576F2" class="field mb-4"></select>
+
+        <div class="flex items-center gap-3 mb-5">
+          <input id="teamB-name" value="Francia" class="font-display font-700 text-2xl bg-transparent outline-none w-full text-right tracking-wide focus:text-azul transition-colors" />
+          <span id="teamB-flag" class="text-2xl leading-none">🇫🇷</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="text-xs text-muted block mb-1">xG promedio (a favor)</label>
+            <input id="teamB-xg" type="number" step="0.01" min="0.1" max="4.5" value="1.95"
+              class="field text-azul" />
+          </div>
+          <div>
+            <label class="text-xs text-muted block mb-1">xGA promedio (en contra)</label>
+            <input id="teamB-xga" type="number" step="0.01" min="0.1" max="4.5" value="0.85"
+              class="field text-azul" />
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Calidad General del Equipo</span><span id="teamB-quality-val" class="font-mono text-azul">93</span></div>
+            <input style="--thumb:#3576F2" class="accent-azul w-full" id="teamB-quality" type="range" min="1" max="100" value="93" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Generadores de Momentos (ofensivo)</span><span id="teamB-momentumGen-val" class="font-mono text-azul">9</span></div>
+            <input style="--thumb:#3576F2" class="accent-azul w-full" id="teamB-momentumGen" type="range" min="1" max="10" value="9" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Bloqueadores de Momentos (defensivo)</span><span id="teamB-momentumBlock-val" class="font-mono text-azul">6</span></div>
+            <input style="--thumb:#3576F2" class="accent-azul w-full" id="teamB-momentumBlock" type="range" min="1" max="10" value="6" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Calidad del Arquero</span><span id="teamB-gk-val" class="font-mono text-azul">80</span></div>
+            <input style="--thumb:#3576F2" class="accent-azul w-full" id="teamB-gk" type="range" min="1" max="100" value="80" />
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-muted">Efectividad de Goleadores</span><span id="teamB-scorer-val" class="font-mono text-azul">90</span></div>
+            <input style="--thumb:#3576F2" class="accent-azul w-full" id="teamB-scorer" type="range" min="1" max="100" value="90" />
+          </div>
+        </div>
+      </div>
+
+      <button id="swap-btn-mobile" class="lg:hidden flex items-center justify-center gap-1.5 text-[11px] text-muted hover:text-ink transition-colors border border-line rounded-full px-3 py-1.5 mx-auto -mt-2">
+        <span>⇄</span> Intercambiar equipos
+      </button>
+    </section>
+
+    <!-- ===================== RESULTADOS ===================== -->
+    <section id="results" class="reveal mt-14">
+
+      <div class="text-center mb-8">
+        <span class="text-[11px] uppercase tracking-[0.25em] text-muted">Resultado de la simulación</span>
+      </div>
+
+      <!-- Marcador exacto -->
+      <div class="glass border border-line rounded-2xl py-8 px-6 text-center mb-6">
+        <div id="score-team-names" class="text-muted text-xs uppercase tracking-widest mb-3"></div>
+        <div id="scoreboard" class="font-mono scoreboard-glow font-700 text-6xl md:text-7xl tracking-widest"></div>
+        <div id="score-probability" class="text-muted text-xs mt-3"></div>
+      </div>
+
+      <!-- Barras de probabilidad -->
+      <div class="glass border border-line rounded-2xl p-6 mb-6">
+        <h3 class="font-display font-700 text-sm uppercase tracking-widest text-muted mb-5">Probabilidad de Resultado</h3>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <span id="bar-label-a" class="font-medium text-pitch">Victoria A</span>
+              <span id="bar-val-a" class="font-mono text-pitch">0%</span>
+            </div>
+            <div class="h-3 rounded-full bg-panelLight overflow-hidden">
+              <div id="bar-a" class="bar-fill h-full rounded-full bg-gradient-to-r from-pitchDim to-pitch" style="width:0%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <span class="font-medium text-gold">Empate</span>
+              <span id="bar-val-draw" class="font-mono text-gold">0%</span>
+            </div>
+            <div class="h-3 rounded-full bg-panelLight overflow-hidden">
+              <div id="bar-draw" class="bar-fill h-full rounded-full bg-gold" style="width:0%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1.5">
+              <span id="bar-label-b" class="font-medium text-azul">Victoria B</span>
+              <span id="bar-val-b" class="font-mono text-azul">0%</span>
+            </div>
+            <div class="h-3 rounded-full bg-panelLight overflow-hidden">
+              <div id="bar-b" class="bar-fill h-full rounded-full bg-gradient-to-r from-azulDim to-azul" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- xG proyectado -->
+        <div class="glass border border-line rounded-2xl p-6">
+          <h3 class="font-display font-700 text-sm uppercase tracking-widest text-muted mb-4">xG Proyectado Ajustado</h3>
+          <div id="xg-cards" class="grid grid-cols-2 gap-3"></div>
+          <p class="text-[11px] text-muted mt-4 leading-relaxed">Incluye inflación mundialista (+15%), diferencial de calidad, momentos de partido, factor arquero/goleador y ancla TAG con desvío controlado del 30%.</p>
+        </div>
+
+        <!-- Top marcadores -->
+        <div class="glass border border-line rounded-2xl p-6">
+          <h3 class="font-display font-700 text-sm uppercase tracking-widest text-muted mb-4">Marcadores Más Probables</h3>
+          <div id="top-scores" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Quién anotará -->
+      <div class="glass border border-line rounded-2xl p-6 mb-6">
+        <h3 class="font-display font-700 text-sm uppercase tracking-widest text-muted mb-1">⚽ Simulación: ¿Quién Anotará?</h3>
+        <p class="text-[11px] text-muted mb-4">Cuando elegís una selección real, los goles se reparten entre sus goleadores más probables. Con un equipo personalizado, se usa un perfil de roles genérico.</p>
+        <div id="goal-feed" class="space-y-2"></div>
+      </div>
+
+      <!-- Desglose del modelo -->
+      <div class="glass border border-line rounded-2xl overflow-hidden">
+        <button id="toggle-breakdown" class="w-full flex items-center justify-between px-6 py-4 text-left">
+          <span class="font-display font-700 text-sm uppercase tracking-widest text-muted">Desglose del Modelo (Tablero de Analista)</span>
+          <span id="breakdown-arrow" class="text-muted transition-transform">▾</span>
+        </button>
+        <div id="breakdown-body" class="hidden px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="text-center text-muted text-[11px] pb-10 px-5">
+    Predictor Mundial by Samuel · Modelo ilustrativo con fines de simulación y entretenimiento analítico · No constituye una predicción oficial ni asesoría de apuestas.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // =====================================================
+  // 1. BASE DE DATOS DE LAS 48 SELECCIONES CLASIFICADAS
+  //    Valores ilustrativos y editables: cada selección trae
+  //    estadísticas base + sus goleadores más probables.
+  // =====================================================
+  const TEAMS = {
+    // ----- Anfitriones -----
+    mexico:    { n:'México', c:'hosts', f:'🇲🇽', xg:1.55, xga:1.05, q:84, mg:7, mb:6, gk:78, sc:75, sco:[['Santiago Giménez',0.30],['Hirving Lozano',0.15],['Edson Álvarez',0.08]] },
+    eeuu:      { n:'Estados Unidos', c:'hosts', f:'🇺🇸', xg:1.55, xga:1.10, q:83, mg:7, mb:6, gk:80, sc:73, sco:[['Christian Pulisic',0.32],['Folarin Balogun',0.14],['Weston McKennie',0.12]] },
+    canada:    { n:'Canadá', c:'hosts', f:'🇨🇦', xg:1.65, xga:1.00, q:85, mg:8, mb:6, gk:79, sc:77, sco:[['Jonathan David',0.35],['Alphonso Davies',0.20],['Tajon Buchanan',0.12]] },
+
+    // ----- CONMEBOL -----
+    argentina: { n:'Argentina', c:'conmebol', f:'🇦🇷', xg:1.95, xga:0.70, q:95, mg:9, mb:8, gk:90, sc:92, sco:[['Lionel Messi',0.28],['Lautaro Martínez',0.24],['Julián Álvarez',0.18]] },
+    brasil:    { n:'Brasil', c:'conmebol', f:'🇧🇷', xg:2.05, xga:0.80, q:93, mg:9, mb:6, gk:85, sc:90, sco:[['Vinícius Júnior',0.26],['Rodrygo',0.18],['Raphinha',0.14]] },
+    uruguay:   { n:'Uruguay', c:'conmebol', f:'🇺🇾', xg:1.65, xga:0.85, q:86, mg:8, mb:7, gk:83, sc:82, sco:[['Darwin Núñez',0.30],['Federico Valverde',0.18]] },
+    colombia:  { n:'Colombia', c:'conmebol', f:'🇨🇴', xg:1.70, xga:0.95, q:85, mg:8, mb:6, gk:78, sc:80, sco:[['Luis Díaz',0.28],['James Rodríguez',0.16],['Luis Sinisterra',0.14]] },
+    paraguay:  { n:'Paraguay', c:'conmebol', f:'🇵🇾', xg:1.25, xga:1.15, q:71, mg:6, mb:7, gk:74, sc:65, sco:[['Antonio Sanabria',0.25],['Miguel Almirón',0.20]] },
+    ecuador:   { n:'Ecuador', c:'conmebol', f:'🇪🇨', xg:1.40, xga:0.95, q:80, mg:7, mb:8, gk:77, sc:70, sco:[['Enner Valencia',0.32],['Moisés Caicedo',0.10]] },
+
+    // ----- UEFA -----
+    espana:    { n:'España', c:'uefa', f:'🇪🇸', xg:2.10, xga:0.65, q:96, mg:9, mb:8, gk:87, sc:91, sco:[['Lamine Yamal',0.24],['Nico Williams',0.16],['Ferran Torres',0.14]] },
+    francia:   { n:'Francia', c:'uefa', f:'🇫🇷', xg:2.05, xga:0.72, q:95, mg:9, mb:7, gk:86, sc:92, sco:[['Kylian Mbappé',0.34],['Ousmane Dembélé',0.16],['Marcus Thuram',0.14]] },
+    inglaterra:{ n:'Inglaterra', c:'uefa', f:'🏴', xg:2.00, xga:0.75, q:94, mg:9, mb:7, gk:85, sc:89, sco:[['Harry Kane',0.30],['Bukayo Saka',0.16],['Jude Bellingham',0.14]] },
+    alemania:  { n:'Alemania', c:'uefa', f:'🇩🇪', xg:1.80, xga:0.88, q:87, mg:8, mb:7, gk:84, sc:82, sco:[['Florian Wirtz',0.20],['Jamal Musiala',0.18],['Kai Havertz',0.14]] },
+    paisesbajos:{n:'Países Bajos', c:'uefa', f:'🇳🇱', xg:1.78, xga:0.80, q:88, mg:8, mb:7, gk:86, sc:81, sco:[['Cody Gakpo',0.26],['Memphis Depay',0.16],['Frenkie de Jong',0.08]] },
+    portugal:  { n:'Portugal', c:'uefa', f:'🇵🇹', xg:1.85, xga:0.82, q:90, mg:8, mb:7, gk:83, sc:86, sco:[['Cristiano Ronaldo',0.26],['Rafael Leão',0.18],['Bernardo Silva',0.12]] },
+    suiza:     { n:'Suiza', c:'uefa', f:'🇨🇭', xg:1.45, xga:0.90, q:80, mg:7, mb:8, gk:80, sc:72, sco:[['Breel Embolo',0.22],['Granit Xhaka',0.10]] },
+    belgica:   { n:'Bélgica', c:'uefa', f:'🇧🇪', xg:1.70, xga:0.88, q:86, mg:8, mb:7, gk:87, sc:80, sco:[['Romelu Lukaku',0.28],['Kevin De Bruyne',0.16],['Jérémy Doku',0.14]] },
+    croacia:   { n:'Croacia', c:'uefa', f:'🇭🇷', xg:1.55, xga:0.85, q:84, mg:7, mb:8, gk:82, sc:75, sco:[['Andrej Kramarić',0.26],['Luka Modrić',0.10]] },
+    noruega:   { n:'Noruega', c:'uefa', f:'🇳🇴', xg:1.90, xga:0.95, q:85, mg:9, mb:6, gk:76, sc:88, sco:[['Erling Haaland',0.42],['Martin Ødegaard',0.14],['Alexander Sørloth',0.12]] },
+    suecia:    { n:'Suecia', c:'uefa', f:'🇸🇪', xg:1.45, xga:1.00, q:76, mg:7, mb:6, gk:75, sc:74, sco:[['Alexander Isak',0.34],['Viktor Gyökeres',0.18]] },
+    austria:   { n:'Austria', c:'uefa', f:'🇦🇹', xg:1.50, xga:0.95, q:78, mg:7, mb:7, gk:76, sc:70, sco:[['Marko Arnautović',0.18],['Marcel Sabitzer',0.16]] },
+    chequia:   { n:'Chequia', c:'uefa', f:'🇨🇿', xg:1.30, xga:1.05, q:72, mg:6, mb:7, gk:74, sc:65, sco:[['Patrik Schick',0.30],['Adam Hložek',0.12]] },
+    bosnia:    { n:'Bosnia y Herzegovina', c:'uefa', f:'🇧🇦', xg:1.35, xga:1.05, q:73, mg:6, mb:7, gk:73, sc:68, sco:[['Edin Džeko',0.32]] },
+    escocia:   { n:'Escocia', c:'uefa', f:'🏴', xg:1.40, xga:1.00, q:77, mg:6, mb:7, gk:75, sc:67, sco:[['Scott McTominay',0.26],['Andy Robertson',0.08]] },
+    turquia:   { n:'Turquía', c:'uefa', f:'🇹🇷', xg:1.55, xga:0.95, q:81, mg:7, mb:7, gk:77, sc:76, sco:[['Arda Güler',0.22],['Kenan Yıldız',0.20]] },
+
+    // ----- CAF -----
+    marruecos: { n:'Marruecos', c:'caf', f:'🇲🇦', xg:1.65, xga:0.75, q:87, mg:8, mb:9, gk:86, sc:78, sco:[['Youssef En-Nesyri',0.20],['Hakim Ziyech',0.18],['Achraf Hakimi',0.16]] },
+    egipto:    { n:'Egipto', c:'caf', f:'🇪🇬', xg:1.55, xga:0.95, q:81, mg:7, mb:7, gk:78, sc:80, sco:[['Mohamed Salah',0.42],['Omar Marmoush',0.14]] },
+    argelia:   { n:'Argelia', c:'caf', f:'🇩🇿', xg:1.50, xga:0.95, q:79, mg:7, mb:7, gk:76, sc:74, sco:[['Riyad Mahrez',0.26],['Mohamed Amoura',0.18]] },
+    tunez:     { n:'Túnez', c:'caf', f:'🇹🇳', xg:1.30, xga:0.95, q:73, mg:6, mb:8, gk:75, sc:64, sco:[['Hannibal Mejbri',0.16]] },
+    senegal:   { n:'Senegal', c:'caf', f:'🇸🇳', xg:1.60, xga:0.85, q:84, mg:8, mb:8, gk:83, sc:78, sco:[['Sadio Mané',0.30],['Nicolas Jackson',0.18]] },
+    costamarfil:{n:'Costa de Marfil', c:'caf', f:'🇨🇮', xg:1.60, xga:0.90, q:82, mg:8, mb:7, gk:78, sc:77, sco:[['Sébastien Haller',0.28],['Franck Kessié',0.14]] },
+    ghana:     { n:'Ghana', c:'caf', f:'🇬🇭', xg:1.40, xga:1.00, q:75, mg:7, mb:7, gk:73, sc:68, sco:[['Mohammed Kudus',0.30],['Jordan Ayew',0.12]] },
+    caboverde: { n:'Cabo Verde', c:'caf', f:'🇨🇻', xg:1.05, xga:1.20, q:62, mg:5, mb:7, gk:68, sc:52, sco:[] },
+    sudafrica: { n:'Sudáfrica', c:'caf', f:'🇿🇦', xg:1.20, xga:1.10, q:68, mg:6, mb:7, gk:70, sc:58, sco:[['Lyle Foster',0.22]] },
+    rdcongo:   { n:'RD Congo', c:'caf', f:'🇨🇩', xg:1.15, xga:1.15, q:65, mg:6, mb:6, gk:67, sc:56, sco:[['Cédric Bakambu',0.24],['Chancel Mbemba',0.10]] },
+
+    // ----- AFC -----
+    japon:     { n:'Japón', c:'afc', f:'🇯🇵', xg:1.60, xga:0.85, q:83, mg:8, mb:8, gk:80, sc:76, sco:[['Takefusa Kubo',0.20],['Kaoru Mitoma',0.18],['Ayase Ueda',0.16]] },
+    corea:     { n:'Corea del Sur', c:'afc', f:'🇰🇷', xg:1.45, xga:0.95, q:77, mg:7, mb:7, gk:76, sc:74, sco:[['Heung-min Son',0.36],['Lee Kang-in',0.14]] },
+    iran:      { n:'Irán', c:'afc', f:'🇮🇷', xg:1.25, xga:1.00, q:71, mg:6, mb:7, gk:73, sc:64, sco:[['Mehdi Taremi',0.30],['Sardar Azmoun',0.14]] },
+    arabia:    { n:'Arabia Saudita', c:'afc', f:'🇸🇦', xg:1.20, xga:1.05, q:70, mg:6, mb:6, gk:71, sc:62, sco:[['Salem Al-Dawsari',0.28]] },
+    australia: { n:'Australia', c:'afc', f:'🇦🇺', xg:1.30, xga:1.00, q:74, mg:6, mb:7, gk:74, sc:65, sco:[['Mitchell Duke',0.22],['Craig Goodwin',0.12]] },
+    catar:     { n:'Catar', c:'afc', f:'🇶🇦', xg:1.15, xga:1.10, q:66, mg:6, mb:6, gk:68, sc:60, sco:[['Akram Afif',0.32]] },
+    jordania:  { n:'Jordania', c:'afc', f:'🇯🇴', xg:1.05, xga:1.20, q:60, mg:5, mb:6, gk:64, sc:50, sco:[['Yazan Al-Naimat',0.14]] },
+    irak:      { n:'Irak', c:'afc', f:'🇮🇶', xg:1.10, xga:1.15, q:64, mg:6, mb:6, gk:65, sc:55, sco:[['Aymen Hussein',0.16]] },
+    uzbekistan:{ n:'Uzbekistán', c:'afc', f:'🇺🇿', xg:1.10, xga:1.10, q:63, mg:6, mb:7, gk:66, sc:54, sco:[['Eldor Shomurodov',0.28]] },
+
+    // ----- CONCACAF (no anfitriones) -----
+    panama:    { n:'Panamá', c:'concacaf', f:'🇵🇦', xg:1.20, xga:1.05, q:70, mg:6, mb:7, gk:71, sc:60, sco:[['Ismael Díaz',0.14]] },
+    haiti:     { n:'Haití', c:'concacaf', f:'🇭🇹', xg:1.05, xga:1.25, q:60, mg:5, mb:6, gk:62, sc:50, sco:[] },
+    curazao:   { n:'Curazao', c:'concacaf', f:'🇨🇼', xg:0.95, xga:1.30, q:57, mg:5, mb:6, gk:60, sc:46, sco:[] },
+
+    // ----- OFC -----
+    nuevazelanda:{n:'Nueva Zelanda', c:'ofc', f:'🇳🇿', xg:1.05, xga:1.20, q:61, mg:5, mb:6, gk:64, sc:52, sco:[['Chris Wood',0.34]] },
+  };
+
+  const CONF_LABELS = {
+    hosts:'Anfitriones', conmebol:'CONMEBOL · Sudamérica', uefa:'UEFA · Europa',
+    caf:'CAF · África', afc:'AFC · Asia', concacaf:'CONCACAF · Norte/Centroamérica',
+    ofc:'OFC · Oceanía',
+  };
+  const CONF_ORDER = ['hosts', 'conmebol', 'uefa', 'caf', 'afc', 'concacaf', 'ofc'];
+
+  // =====================================================
+  // 2. CONFIGURACIÓN DEL MODELO
+  // =====================================================
+  const CONFIG = {
+    WORLD_CUP_INFLATION: 1.15,   // Inflación de goles por contexto mundialista
+    QUALITY_COEF: 0.22,          // Máx ±22% por diferencial de Calidad General
+    MOMENTUM_GEN_COEF: 0.16,     // Máx impacto de Generadores de Momentos propios
+    MOMENTUM_BLOCK_COEF: 0.14,   // Máx impacto de Bloqueadores de Momentos rivales
+    GK_COEF: 0.20,                // Máx reducción por Calidad de Arquero rival
+    SCORER_COEF: 0.18,            // Máx incremento por Efectividad de Goleadores propia
+    TAG_DEVIATION_FACTOR: 1.30,   // Amplificación del 30% del desvío respecto al ancla TAG
+    DRAW_REDUCTION_FACTOR: 0.85,  // Reducción artificial de probabilidad de empate
+    MIN_XG: 0.15,
+    MAX_XG: 5.0,
+    MATRIX_SIZE: 10,              // Goles simulados de 0 a 9 por equipo
+  };
+
+  // =====================================================
+  // 3. UTILIDADES MATEMÁTICAS
+  // =====================================================
+  function centered(value, min, max, coef) {
+    const mid = (min + max) / 2;
+    const range = (max - min) / 2;
+    return ((value - mid) / range) * coef;
+  }
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function factorial(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+  function poissonP(k, lambda) { return Math.exp(-lambda) * Math.pow(lambda, k) / factorial(k); }
+
+  function computeTeamXG(attacker, defender) {
+    const tagAnchor = (attacker.xg + defender.xga) / 2;
+    let value = tagAnchor * CONFIG.WORLD_CUP_INFLATION;
+
+    const qualityDiff = (attacker.quality - defender.quality) / 100;
+    const qualityMult = 1 + qualityDiff * CONFIG.QUALITY_COEF;
+    value *= qualityMult;
+
+    const genEffect = centered(attacker.momentumGen, 1, 10, CONFIG.MOMENTUM_GEN_COEF);
+    const blockEffect = centered(defender.momentumBlock, 1, 10, CONFIG.MOMENTUM_BLOCK_COEF);
+    const momentumMult = 1 + genEffect - blockEffect;
+    value *= momentumMult;
+
+    const gkEffect = centered(defender.gkQuality, 1, 100, CONFIG.GK_COEF);
+    const scorerEffect = centered(attacker.scorerEff, 1, 100, CONFIG.SCORER_COEF);
+    const gkScorerMult = 1 - gkEffect + scorerEffect;
+    value *= gkScorerMult;
+
+    const deviation = value - tagAnchor;
+    value = tagAnchor + deviation * CONFIG.TAG_DEVIATION_FACTOR;
+
+    const rawValue = value;
+    value = clamp(value, CONFIG.MIN_XG, CONFIG.MAX_XG);
+
+    return {
+      finalXG: value, rawValue, tagAnchor,
+      qualityDiff, qualityMult, genEffect, blockEffect, momentumMult,
+      gkEffect, scorerEffect, gkScorerMult,
+    };
+  }
+
+  function buildMatrix(lambdaA, lambdaB, size) {
+    const matrix = [];
+    for (let i = 0; i < size; i++) {
+      matrix.push([]);
+      for (let j = 0; j < size; j++) {
+        matrix[i][j] = poissonP(i, lambdaA) * poissonP(j, lambdaB);
+      }
+    }
+    return matrix;
+  }
+
+  function aggregateOutcomes(matrix, size) {
+    let winA = 0, draw = 0, winB = 0;
+    const scores = [];
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        const p = matrix[i][j];
+        if (i > j) winA += p; else if (i === j) draw += p; else winB += p;
+        scores.push({ i, j, p });
+      }
+    }
+    scores.sort((a, b) => b.p - a.p);
+    return { winA, draw, winB, scores };
+  }
+
+  function applyDrawReduction(winA, draw, winB) {
+    const newDraw = draw * CONFIG.DRAW_REDUCTION_FACTOR;
+    const diff = draw - newDraw;
+    const totalWins = winA + winB;
+    const winA2 = winA + diff * (winA / totalWins);
+    const winB2 = winB + diff * (winB / totalWins);
+    const total = winA2 + newDraw + winB2;
+    return { winA: winA2 / total, draw: newDraw / total, winB: winB2 / total };
+  }
+
+  // =====================================================
+  // 4. SIMULACIÓN "QUIÉN ANOTARÁ"
+  //    Si el equipo es una selección real conocida, los goles
+  //    se reparten primero entre sus goleadores nombrados;
+  //    el resto (o un equipo personalizado) usa roles genéricos.
+  // =====================================================
+  const SCORER_ROLES = [
+    { name: 'Delantero Centro', base: 0.42, flavors: ['remate dentro del área tras centro', 'definición de cabeza en el área chica', 'disparo cruzado tras pase filtrado'] },
+    { name: 'Extremo / Delantero Móvil', base: 0.26, flavors: ['gambeta y definición ajustada al palo', 'contragolpe letal tras desborde', 'remate de zurda desde la media luna'] },
+    { name: 'Mediocampista Ofensivo', base: 0.18, flavors: ['llegada desde segunda línea', 'media distancia inatajable', 'remate de primera tras rebote'] },
+    { name: 'Defensa (balón parado)', base: 0.14, flavors: ['cabezazo en pelota parada', 'remate tras córner cerrado', 'definición en el segundo palo'] },
+  ];
+
+  function buildRoleWeights(scorerEff) {
+    const shift = centered(scorerEff, 1, 100, 0.16);
+    const weights = SCORER_ROLES.map((r) => ({ ...r }));
+    weights[0].base = clamp(weights[0].base + shift, 0.05, 0.85);
+    const remaining = 1 - weights[0].base;
+    const othersTotal = weights.slice(1).reduce((s, r) => s + r.base, 0);
+    for (let i = 1; i < weights.length; i++) {
+      weights[i].base = (weights[i].base / othersTotal) * remaining;
+    }
+    return weights;
+  }
+
+  function weightedPickRole(weights) {
+    const r = Math.random();
+    let acc = 0;
+    for (const w of weights) {
+      acc += w.base;
+      if (r <= acc) return w;
+    }
+    return weights[weights.length - 1];
+  }
+
+  function pickScorer(namedScorers, roleWeights) {
+    const r = Math.random();
+    let acc = 0;
+    for (const [name, w] of namedScorers) {
+      acc += w;
+      if (r <= acc) return { type: 'named', name };
+    }
+    const role = weightedPickRole(roleWeights);
+    const flavor = role.flavors[Math.floor(Math.random() * role.flavors.length)];
+    return { type: 'role', role: role.name, flavor };
+  }
+
+  function simulateScorers(teamName, teamKey, goalCount, scorerEff, side) {
+    const teamData = teamKey && teamKey !== 'custom' ? TEAMS[teamKey] : null;
+    const namedScorers = teamData ? teamData.sco : [];
+    const roleWeights = buildRoleWeights(scorerEff);
+    const usedMinutes = new Set();
+    const events = [];
+    for (let g = 0; g < goalCount; g++) {
+      let minute;
+      do { minute = Math.floor(Math.random() * 90) + 1; } while (usedMinutes.has(minute));
+      usedMinutes.add(minute);
+      const pick = pickScorer(namedScorers, roleWeights);
+      events.push(Object.assign({ minute, teamName, side }, pick));
+    }
+    return events.sort((a, b) => a.minute - b.minute);
+  }
+
+  // =====================================================
+  // 5. CONSTRUCCIÓN DE LOS SELECTS DE EQUIPOS
+  // =====================================================
+  function buildTeamOptions(selectEl, defaultKey) {
+    const customOpt = document.createElement('option');
+    customOpt.value = 'custom';
+    customOpt.textContent = '✏️ Personalizado (edición manual)';
+    selectEl.appendChild(customOpt);
+
+    CONF_ORDER.forEach((confKey) => {
+      const group = document.createElement('optgroup');
+      group.label = CONF_LABELS[confKey];
+      Object.keys(TEAMS).forEach((key) => {
+        const t = TEAMS[key];
+        if (t.c !== confKey) return;
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = t.f + '  ' + t.n;
+        group.appendChild(opt);
+      });
+      selectEl.appendChild(group);
+    });
+    selectEl.value = defaultKey;
+  }
+
+  function applyTeamToFields(prefix, key) {
+    if (key === 'custom') {
+      document.getElementById(prefix + '-flag').textContent = '🏳️';
+      return;
+    }
+    const t = TEAMS[key];
+    document.getElementById(prefix + '-name').value = t.n;
+    document.getElementById(prefix + '-flag').textContent = t.f;
+    document.getElementById(prefix + '-xg').value = t.xg.toFixed(2);
+    document.getElementById(prefix + '-xga').value = t.xga.toFixed(2);
+    setSlider(prefix + '-quality', t.q);
+    setSlider(prefix + '-momentumGen', t.mg);
+    setSlider(prefix + '-momentumBlock', t.mb);
+    setSlider(prefix + '-gk', t.gk);
+    setSlider(prefix + '-scorer', t.sc);
+  }
+
+  function setSlider(id, value) {
+    document.getElementById(id).value = value;
+    document.getElementById(id + '-val').textContent = value;
+  }
+
+  // =====================================================
+  // 6. LECTURA DE DATOS DE FORMULARIO
+  // =====================================================
+  function num(id) { return parseFloat(document.getElementById(id).value); }
+  function txt(id) { return document.getElementById(id).value.trim() || (id.startsWith('teamA') ? 'Equipo A' : 'Equipo B'); }
+
+  function getTeamData(prefix) {
+    return {
+      name: txt(prefix + '-name'),
+      xg: num(prefix + '-xg'),
+      xga: num(prefix + '-xga'),
+      quality: num(prefix + '-quality'),
+      momentumGen: num(prefix + '-momentumGen'),
+      momentumBlock: num(prefix + '-momentumBlock'),
+      gkQuality: num(prefix + '-gk'),
+      scorerEff: num(prefix + '-scorer'),
+    };
+  }
+
+  // =====================================================
+  // 7. BINDING DE SLIDERS (valores en vivo)
+  // =====================================================
+  const sliderIds = [
+    'teamA-quality', 'teamA-momentumGen', 'teamA-momentumBlock', 'teamA-gk', 'teamA-scorer',
+    'teamB-quality', 'teamB-momentumGen', 'teamB-momentumBlock', 'teamB-gk', 'teamB-scorer',
+  ];
+  sliderIds.forEach((id) => {
+    const input = document.getElementById(id);
+    const out = document.getElementById(id + '-val');
+    input.addEventListener('input', () => { out.textContent = input.value; });
+  });
+
+  // =====================================================
+  // 8. RENDERIZADO DE RESULTADOS
+  // =====================================================
+  function pct(v) { return (v * 100).toFixed(1) + '%'; }
+
+  function renderResults(teamA, teamB, teamAKey, teamBKey, resA, resB, finalProbs, bestScore, top5) {
+    document.getElementById('score-team-names').textContent =
+      teamA.name.toUpperCase() + '   ·   ' + teamB.name.toUpperCase();
+    document.getElementById('scoreboard').innerHTML =
+      '<span class="text-pitch">' + bestScore.i + '</span>' +
+      '<span class="text-muted px-3">–</span>' +
+      '<span class="text-azul">' + bestScore.j + '</span>';
+    document.getElementById('score-probability').textContent =
+      'Marcador exacto más probable · ' + pct(bestScore.p) + ' de probabilidad';
+
+    document.getElementById('bar-label-a').textContent = 'Victoria ' + teamA.name;
+    document.getElementById('bar-label-b').textContent = 'Victoria ' + teamB.name;
+    document.getElementById('bar-val-a').textContent = pct(finalProbs.winA);
+    document.getElementById('bar-val-draw').textContent = pct(finalProbs.draw);
+    document.getElementById('bar-val-b').textContent = pct(finalProbs.winB);
+    requestAnimationFrame(() => {
+      document.getElementById('bar-a').style.width = (finalProbs.winA * 100) + '%';
+      document.getElementById('bar-draw').style.width = (finalProbs.draw * 100) + '%';
+      document.getElementById('bar-b').style.width = (finalProbs.winB * 100) + '%';
+    });
+
+    const xgCards = document.getElementById('xg-cards');
+    xgCards.innerHTML =
+      '<div class="bg-panelLight border border-line rounded-xl p-4 text-center">' +
+        '<div class="text-[10px] uppercase tracking-widest text-muted mb-1">' + teamA.name + '</div>' +
+        '<div class="font-mono text-2xl text-pitch font-700">' + resA.finalXG.toFixed(2) + '</div>' +
+        '<div class="text-[10px] text-muted mt-1">xG proyectado</div>' +
+      '</div>' +
+      '<div class="bg-panelLight border border-line rounded-xl p-4 text-center">' +
+        '<div class="text-[10px] uppercase tracking-widest text-muted mb-1">' + teamB.name + '</div>' +
+        '<div class="font-mono text-2xl text-azul font-700">' + resB.finalXG.toFixed(2) + '</div>' +
+        '<div class="text-[10px] text-muted mt-1">xG proyectado</div>' +
+      '</div>';
+
+    const topScores = document.getElementById('top-scores');
+    topScores.innerHTML = top5.map((s) => {
+      const isBest = s.i === bestScore.i && s.j === bestScore.j;
+      return '<div class="flex items-center justify-between text-sm rounded-lg px-3 py-2 ' +
+        (isBest ? 'bg-gold/10 border border-gold/40' : 'bg-panelLight border border-line') + '">' +
+        '<span class="font-mono">' + s.i + ' – ' + s.j + '</span>' +
+        '<span class="font-mono text-muted">' + pct(s.p) + '</span>' +
+        '</div>';
+    }).join('');
+
+    const scorersA = simulateScorers(teamA.name, teamAKey, bestScore.i, teamA.scorerEff, 'A');
+    const scorersB = simulateScorers(teamB.name, teamBKey, bestScore.j, teamB.scorerEff, 'B');
+    const allGoals = scorersA.concat(scorersB).sort((a, b) => a.minute - b.minute);
+    const feed = document.getElementById('goal-feed');
+    if (allGoals.length === 0) {
+      feed.innerHTML = '<p class="text-muted text-sm">Empate sin goles en el marcador simulado — ninguna selección anota.</p>';
+    } else {
+      feed.innerHTML = allGoals.map((g) => {
+        const colorText = g.side === 'A' ? 'text-pitch' : 'text-azul';
+        const colorBorder = g.side === 'A' ? 'border-pitch/40' : 'border-azul/40';
+        const desc = g.type === 'named'
+          ? '<span class="text-ink font-medium">' + g.name + '</span><span class="text-muted">, definición individual</span>'
+          : '<span class="text-ink">' + g.role + '</span><span class="text-muted">, ' + g.flavor + '</span>';
+        return '<div class="goal-row flex items-start gap-3 rounded-lg border ' + colorBorder + ' bg-panelLight px-4 py-2.5">' +
+          '<span class="font-mono text-xs ' + colorText + ' shrink-0 w-10">' + g.minute + "'</span>" +
+          '<span class="text-lg leading-none">⚽</span>' +
+          '<div class="text-sm leading-snug">' +
+            '<span class="font-semibold ' + colorText + '">' + g.teamName + '</span> — ' + desc +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    const breakdown = document.getElementById('breakdown-body');
+    breakdown.innerHTML = buildBreakdownColumn(teamA, resA, 'text-pitch') + buildBreakdownColumn(teamB, resB, 'text-azul');
+
+    const results = document.getElementById('results');
+    results.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => results.classList.add('show'));
+    });
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function buildBreakdownColumn(team, res, colorClass) {
+    const row = (label, value) => '<div class="flex justify-between border-b border-line/60 py-1.5"><span class="text-muted">' + label + '</span><span class="' + colorClass + '">' + value + '</span></div>';
+    return '<div>' +
+      '<div class="font-display text-sm uppercase tracking-widest mb-2 ' + colorClass + '">' + team.name + '</div>' +
+      row('Ancla TAG (promedio estricto)', res.tagAnchor.toFixed(3)) +
+      row('+ Inflación Mundialista', '×' + CONFIG.WORLD_CUP_INFLATION.toFixed(2)) +
+      row('± Calidad General (Δ ' + (res.qualityDiff * 100).toFixed(1) + '%)', '×' + res.qualityMult.toFixed(3)) +
+      row('± Momentos (gen. ' + team.momentumGen + ' / bloq. rival)', '×' + res.momentumMult.toFixed(3)) +
+      row('± Arquero rival / Goleadores propios', '×' + res.gkScorerMult.toFixed(3)) +
+      row('→ Desvío amplificado (Ancla TAG ×1.30)', res.rawValue.toFixed(3)) +
+      row('= xG Proyectado Final', res.finalXG.toFixed(3)) +
+    '</div>';
+  }
+
+  // =====================================================
+  // 9. EJECUCIÓN PRINCIPAL
+  // =====================================================
+  function runSimulation() {
+    const teamA = getTeamData('teamA');
+    const teamB = getTeamData('teamB');
+    const teamAKey = document.getElementById('teamA-select').value;
+    const teamBKey = document.getElementById('teamB-select').value;
+
+    const resA = computeTeamXG(teamA, teamB);
+    const resB = computeTeamXG(teamB, teamA);
+
+    const matrix = buildMatrix(resA.finalXG, resB.finalXG, CONFIG.MATRIX_SIZE);
+    const agg = aggregateOutcomes(matrix, CONFIG.MATRIX_SIZE);
+    const finalProbs = applyDrawReduction(agg.winA, agg.draw, agg.winB);
+    const bestScore = agg.scores[0];
+    const top5 = agg.scores.slice(0, 5);
+
+    renderResults(teamA, teamB, teamAKey, teamBKey, resA, resB, finalProbs, bestScore, top5);
+  }
+
+  document.getElementById('simulate-btn').addEventListener('click', runSimulation);
+
+  // Selección de equipo desde el dropdown
+  document.getElementById('teamA-select').addEventListener('change', (e) => applyTeamToFields('teamA', e.target.value));
+  document.getElementById('teamB-select').addEventListener('change', (e) => applyTeamToFields('teamB', e.target.value));
+
+  // Intercambiar equipos
+  function swapTeams() {
+    const fields = ['select', 'name', 'xg', 'xga', 'quality', 'momentumGen', 'momentumBlock', 'gk', 'scorer'];
+    fields.forEach((f) => {
+      const elA = document.getElementById('teamA-' + f);
+      const elB = document.getElementById('teamB-' + f);
+      const tmp = elA.value;
+      elA.value = elB.value;
+      elB.value = tmp;
+    });
+    const flagA = document.getElementById('teamA-flag').textContent;
+    const flagB = document.getElementById('teamB-flag').textContent;
+    document.getElementById('teamA-flag').textContent = flagB;
+    document.getElementById('teamB-flag').textContent = flagA;
+    sliderIds.forEach((id) => {
+      document.getElementById(id + '-val').textContent = document.getElementById(id).value;
+    });
+  }
+  document.getElementById('swap-btn').addEventListener('click', swapTeams);
+  document.getElementById('swap-btn-mobile').addEventListener('click', swapTeams);
+
+  // Desglose colapsable
+  const toggleBtn = document.getElementById('toggle-breakdown');
+  toggleBtn.addEventListener('click', () => {
+    const body = document.getElementById('breakdown-body');
+    const arrow = document.getElementById('breakdown-arrow');
+    body.classList.toggle('hidden');
+    arrow.style.transform = body.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+  });
+
+  // =====================================================
+  // 10. INICIALIZACIÓN
+  // =====================================================
+  buildTeamOptions(document.getElementById('teamA-select'), 'argentina');
+  buildTeamOptions(document.getElementById('teamB-select'), 'francia');
+  applyTeamToFields('teamA', 'argentina');
+  applyTeamToFields('teamB', 'francia');
+  runSimulation();
+})();
+</script>
+</body>
+</html>
